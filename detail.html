@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous">
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.2.2/axios.min.js"
+        integrity="sha512-QTnb9BQkG4fBYIt9JGvYmxPpd6TBeKp6lsUrtiVQsrJ9sb33Bn9s0wMQO9qVBFbPX3xHRAsBHvXlcsrnJjExjg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <title>Document</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/index.html">LOGO</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">測試用</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active d-none backstage " aria-current="page" href="/backstage.html">前往後台</a>
+                    </li>
+                </ul>
+                <!-- 登入 註冊 -->
+                <form class="d-flex noToken">
+                    <a class="btn bg-light" href="login.html">登入</a>
+                    <a class="btn bg-primary text-white " href="signup.html">免費註冊</a>
+                </form>
+                <!-- 登出 -->
+                <form class="d-flex withToken">
+                    <a class="btn bg-light" href="like.html">收藏列表</a>
+                    <a class="btn bg-primary text-white logout" href="#">登出</a>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <span class="fw-bold fs-1">單筆內文</span>
+            </div>
+            <div class="col-12">
+                <span class="uncollected">未收藏</span>
+                <span class="collected">已收藏</span>
+            </div>
+            <div class="col-12">
+                <button class="btn toggleCollection">加入收藏</button>
+            </div>
+
+            <div class="col-12 locationData">
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const adminCheck = () => {
+            const backstage = document.querySelector('.backstage')
+            const user = JSON.parse(localStorage.getItem('user'))
+            if (user === null) {
+                return
+            } else if (user.level === 'admin') {
+                backstage.classList.remove('d-none')
+            }
+        }
+
+        const tokenCheck = () => {
+            const token = localStorage.getItem('token')
+            // 未登入
+            const noToken = document.querySelector(".noToken");
+            // 已登入
+            const withToken = document.querySelector(".withToken");
+            if (token) {
+                noToken.classList.remove('d-flex');
+                noToken.classList.add('d-none');
+                withToken.classList.remove('d-none');
+                withToken.classList.add('d-flex');
+            } else {
+                withToken.classList.remove('d-flex');
+                withToken.classList.add('d-none');
+                noToken.classList.remove('d-none');
+                noToken.classList.add('d-flex');
+            }
+            return token
+        }
+        adminCheck()
+        tokenCheck()
+        // 登出按鈕
+        const logout = document.querySelector(".logout");
+        logout.addEventListener('click', (e) => {
+            window.localStorage.removeItem('user')
+            window.localStorage.removeItem('token')
+            window.localStorage.removeItem('location')
+            location.href = 'index.html';
+        })
+        // 解析網址
+        const getUrlString = window.location.href;
+        const url = new URL(getUrlString);
+        const params = url.searchParams.get('location')
+        // 找出一樣ID的景點
+        const localStorageData = JSON.parse(localStorage.getItem('location'))
+        const data = localStorageData.filter(item => item._id === params)
+        const locationData = document.querySelector('.locationData');
+        locationData.innerHTML = JSON.stringify(data)
+        const patchData = {
+            title: data[0].title,
+            body: data[0].body,
+            pictureUrl: data[0].pictureUrl,
+        }
+        // 收藏/未收藏字串
+        const uncollected = document.querySelector('.uncollected');
+        const collected = document.querySelector('.collected');
+        // 收藏/未收藏按鈕
+        const toggleCollection = document.querySelector('.toggleCollection');
+        const removeCollection = document.querySelector('.removeCollection');
+        collected.classList.add('d-none');
+        toggleCollection.addEventListener('click', (e) => {
+            axios({
+                method: 'patch',
+                url: `https://qulification-nodejs-production.up.railway.app/view/updateLike/${params}`,
+                data: patchData,
+                headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                }
+            }).then(res => {
+                const likeList = res.data.result.likes;
+                const data = likeList.filter(item => item.viewId === params)
+                const user = JSON.parse(localStorage.getItem('user'))
+                if (data[0]) {
+                    collected.classList.remove('d-none');
+                    collected.classList.add('d-block');
+                    uncollected.classList.remove('d-block');
+                    uncollected.classList.add('d-none');
+
+                    toggleCollection.innerText = '移除收藏'
+
+                    user.likes.push(data[0])
+                    localStorage.removeItem('user')
+                    localStorage.setItem('user', JSON.stringify(user))
+                } else {
+                    collected.classList.remove('d-block');
+                    collected.classList.add('d-none');
+                    uncollected.classList.remove('d-none');
+                    uncollected.classList.add('d-block');
+
+                    toggleCollection.innerText = '加入收藏'
+
+                    const newUser = user.likes.filter(item => item.viewId !== params)
+                    user.likes = newUser
+                    localStorage.removeItem('user')
+                    localStorage.setItem('user', JSON.stringify(user))
+                }
+            })
+        })
+
+        const init = () => {
+            const user = JSON.parse(localStorage.getItem('user'))
+            const data = user.likes.filter(item => item.viewId === params)
+            if (data[0]) {
+                collected.classList.remove('d-none');
+                collected.classList.add('d-block');
+                uncollected.classList.remove('d-block');
+                uncollected.classList.add('d-none');
+
+                toggleCollection.innerText = '移除收藏'
+            } else {
+                collected.classList.remove('d-block');
+                collected.classList.add('d-none');
+                uncollected.classList.remove('d-none');
+                uncollected.classList.add('d-block');
+
+                toggleCollection.innerText = '加入收藏'
+            }
+        }
+        init();
+    </script>
+</body>
+
+</html>
